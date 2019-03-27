@@ -1,0 +1,545 @@
+Ansible_Documentation
+Configuration  management tool like puppet / chef
+Agentless configuration management tool
+You need not to install any agent on remote servers
+Totally relies on ssh connections. So just make sure that ssh is available and running
+Ansible uses - python (puppet and chef uses ruby)
+Ansible uses - push mechanism (puppet and uses - pull)
+Some of the known companies using ansible  :- Apple / Juniper / Nasa
+
+####################################################################
+
+Requirements :
+
+Minimum 2 RHEL machines - rhel 6
+DNS is available (updated /ete/hosts file)
+
+Change hostname 
+
+Using this command
+Hostname set-hostname <hostname>
+
+Ansible server
+Hostname = ansible-server
+Ip address =  172.18.100.129
+
+Remote client
+Hostname = ansible-client
+Ip address =  172.18.100.130
+
+Hostname = noc-box
+Ip address = 172.18.100.145
+
+Entry in host file(/ete/hosts file)
+
+172.18.100.130 ansibleclient.example.com ansible-client
+
+Now ping by hostname if ping ok then connection is correct 
+example 
+# Ping ansible-client
+###########################################################
+Remove the firewall rules if required
+# iptables -F
+   Or
+#service iptables stop  
+
+####################################
+
+Now we can add host in host file
+
+#vim /etc/ansible/hosts
+
+[web-servers]
+ansibleserver.example.com
+ansibleclient.example.com
+
+Or 
+
+[web-server]
+172.18.100.130
+172.18.100.145
+ 
+Then save and exit
+
+####################################
+
+Let's cover these commands:
+all - Use all defined servers from the inventory file
+-m ping - Use the "ping" module, which simply runs the ping command and returns the results
+-m - module name
+-s - Use "sudo" to run the commands
+-k - Ask for a password rather than use key-based authentication
+-u vagrant - Log into servers using user vagrant
+-a argument
+-B <seconds>: the maximum amount of time (in seconds) to let the job run.
+-P <seconds>: the amount of time (in seconds) to wait between polling the servers for an updated job status.
+
+
+Syntax of  module
+
+Ansible <ip address/machinename> -m <module-name> -u root -k
+
+[root@dlp ~]# ansible all --list-hosts 
+
+   10.0.0.50
+    10.0.0.51
+    10.0.0.52
+
+Below command will list you all ansible-modules 
+  #ansible-doc -l 
+
+Below command will give you details about particular module.
+# ansible-doc  <module-name>
+
+ ping module using below command
+
+# ansible 172.18.100.130 -m ping -u root -k
+# ansible web-servers -m ping -u root -k
+
+Output : 
+172.18.100.130 | success >> {
+    "changed": false,
+    "ping": "pong"
+}
+
+
+2.) setup module using below command
+
+#ansible 172.18.100.130 -m setup -u root -k
+ansible  web-servers -m setup -u root -k
+
+Example :
+[adm@ansible]$ ansible -m  setup -i lin-servers.1 gpfslinapp1
+gpfslinapp1 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_all_ipv4_addresses": [
+            "192.168.3.151"
+        ],
+        "ansible_all_ipv6_addresses": [
+            "fe80::5af3:5374:a618:9c07"
+        ],
+        "ansible_apparmor": {
+            "status": "disabled"
+        },
+        "ansible_architecture": "x86_64",
+        "ansible_bios_date": "05/20/2014",
+        "ansible_bios_version": "6.00",
+        "ansible_cmdline": {
+            "BOOT_IMAGE": "/vmlinuz-3.10.0-862.3.3.el7.x86_64",
+            "LANG": "en_US.UTF-8",
+
+
+
+3.) file module using below command(we can set ownership and permission to file client host)
+#ansible 172.18.100.130 -m file -a 'path=/etc/fstab'
+
+#ansible 172.18.100.130 -m file -a ‘path=/tmp/hello’ state=directory mode=777 owner=root’
+
+4.) copy module using below command( we can copy a file from local to client host)
+
+#ansible 172.18.100.130 -m copy -a 'src=/root/test.txt dest=/tmp’
+
+5.) file module using below command(We can create directory on remote client host)
+# ansible 172.18.100.130 -m file -a 'path=/tmp/hellotest state=directory mode=0777 owner=root'
+ 
+directory delete module using below command (We can delete directory on remote client host)
+# ansible 172.18.100.130 -m file -a 'path=/tmp/hellotest state=absent'
+
+6.) list of all host connected to ansible server
+#ansible web-servers --list-hosts
+
+Below command will install the pack using shell module on remote system using shell
+
+#ansible 172.18.100.130 -m shell -a "yum install vim -y" -u root
+#ansible 172.18.100.130 -m shell -a "yum install nmap -y" -u root
+#ansible web-servers -m shell -a "yum install vim -y" -u root
+
+
+Or
+
+# ansible -m command -a 'hostnamectl' 72.25.10.83
+# ansible -m command -a 'df -h' 72.25.10.83
+# ansible -m command -a 'uptime' 72.25.10.83
+
+
+Managing Packages
+There are modules available for yum and apt. Here are some examples with yum.
+
+Ensure a package is installed, but don’t update it:
+#ansible 172.18.100.130 -m yum -a "name=vim state=present"
+Ensure a package is installed to a specific version:
+#ansible 172.18.100.130 -m yum -a "name=vim-1.5 state=present"
+Ensure a package is at the latest version:
+# ansible 172.18.100.130 -m yum -a "name=vim state=latest"
+
+
+Ensure a package is not installed:
+# ansible 172.18.100.130 -m yum -a "name=vim state=absent"
+
+
+Ansible has modules for managing packages under many platforms. If there isn’t a module for your package manager, you can install packages using the command module or (better!) contribute a module for your package manager. Stop by the mailing list for info/details.
+
+
+Users and Groups
+The ‘user’ module allows easy creation and manipulation of existing user accounts, as well as removal of user accounts that may exist:
+$ ansible 172.18.100.130 -m user -a "name=foo password=<crypted password here>"
+
+$ ansible    all -m user -a "name=foo strate=absent"
+Managing Services
+Ensure a service is started on all webservers:
+$ ansible webservers -m service -a "name=httpd state=started"
+
+
+Alternatively, restart a service on all webservers:
+$ ansible webservers -m service -a "name=httpd state=restarted"
+
+
+Ensure a service is stopped:
+$ ansible webservers -m service -a "name=httpd state=stopped"
+
+Playbook
+At a basic level, including task files allows you to break up bits of configuration policy into smaller files. Task includes pull in tasks from other files. Since handlers are tasks too, you can also include handler files from the ‘handler’ section.
+See Playbooks if you need a review of these concepts.
+Playbooks can also include plays from other playbook files. When that is done, the plays will be inserted into the playbook to form a longer list of plays.
+Task versus Play includes
+Tasks and plays both use the include keyword, but implement the keyword differently. The difference between them is determined by their positioning and content. If the include is inside a play it can only be a ‘task’ include and include a list of tasks; if it is at the top level, it can only include plays. For example:
+# this is a 'play' include
+- include: listofplays
+
+- name: another play
+  hosts: all
+  tasks:
+    - debug: msg=hello
+
+    # this is a 'task' include
+    - include: stuff.yml
+
+
+A ‘task’ include can appear anywhere a task can, but a ‘play’ include cannot be inside other plays only alongside them at the same level. While ‘task’ includes can take other parameters and have the included tasks inherit them, ‘play’ includes are very limited and most directives do not work.
+Task Include Files And Encouraging Reuse
+Suppose you want to reuse lists of tasks between plays or playbooks. You can use include files to do this. Use of included task lists is a great way to define a role that system is going to fulfill. Remember, the goal of a play in a playbook is to map a group of systems into multiple roles. Let’s see what this looks like...
+A task include file simply contains a flat list of tasks, like so:
+---
+# possibly saved as tasks/foo.yml
+
+- name: placeholder foo
+  command: /bin/foo
+
+- name: placeholder bar
+  command: /bin/bar
+
+
+Include directives look like this, and can be mixed in with regular tasks in a playbook:
+tasks:
+
+  - include: tasks/foo.yml
+
+
+Using Playbook to install apache in ansible
+
+Playbooks are nothing but a Ansible configuration management scripts, it can be used to manage configurations of and deployments to remote machines. Playbooks contain set of policies that you want your remote systems to enforce, or a set of steps in a general IT process.
+Playbooks are written and developed in a simple text language, syntax that we use in playbooks are totally different from normal commands that we used to test in the previous tutorial.
+Creating Playbook:
+For our first example, create a playbook called “httpd.yml”, we will configure a host to run an apache web server. Each playbook is composed of one or more “plays” in a list. For each play in playbook, you get to choose which machines in your infrastructure to target and what remote user to complete the tasks.
+
+YML SYNTAX
+We use YAML because it is easier for humans to read and write than other common data formats like XML or JSON. Further, there are libraries available in most programming languages for working with YAML.
+You may also wish to read Playbooks at the same time to see how this is used in practice.
+YAML Basics
+For Ansible, nearly every YAML file starts with a list. Each item in the list is a list of key/value pairs, commonly called a “hash” or a “dictionary”. So, we need to know how to write lists and dictionaries in YAML.
+There’s another small quirk to YAML. All YAML files (regardless of their association with Ansible or not) can optionally begin with --- and end with .... This is part of the YAML format and indicates the start and end of a document.
+All members of a list are lines beginning at the same indentation level starting with a "- " (a dash and a space):
+---
+# A list of tasty fruits
+fruits:
+    - Apple
+    - Orange
+    - Strawberry
+    - Mango
+...
+
+
+A dictionary is represented in a simple key: value form (the colon must be followed by a space):
+# An employee record
+martin:
+    name: Martin D'vloper
+    job: Developer
+    skill: Elite
+
+
+More complicated data structures are possible, such as lists of dictionaries, dictionaries whose values are lists or a mix of both:
+# Employee records
+-  martin:
+    name: Martin D'vloper
+    job: Developer
+    skills:
+      - python
+      - perl
+      - pascal
+-  tabitha:
+    name: Tabitha Bitumen
+    job: Developer
+    skills:
+      - lisp
+      - fortran
+      - erlang
+
+
+Dictionaries and lists can also be represented in an abbreviated form if you really want to:
+---
+martin: {name: Martin D'vloper, job: Developer, skill: Elite}
+fruits: ['Apple', 'Orange', 'Strawberry', 'Mango']
+
+
+Ansible doesn’t really use these too much, but you can also specify a boolean value (true/false) in several forms:
+create_key: yes
+needs_agent: no
+knows_oop: True
+likes_emacs: TRUE
+uses_cvs: false
+
+
+Values can span multiple lines using | or >. Spanning multiple lines using a | will include the newlines. Using a > will ignore newlines; it’s used to make what would otherwise be a very long line easier to read and edit. In either case the indentation will be ignored. Examples are:
+include_newlines: |
+            exactly as you see
+            will appear these three
+            lines of poetry
+
+ignore_newlines: >
+            this is really a
+            single line of text
+            despite appearances
+
+
+Let’s combine what we learned so far in an arbitrary YAML example. This really has nothing to do with Ansible, but will give you a feel for the format:
+---
+# An employee record
+name: Martin D'vloper
+job: Developer
+skill: Elite
+employed: True
+foods:
+    - Apple
+    - Orange
+    - Strawberry
+    - Mango
+languages:
+    perl: Elite
+    python: Elite
+    pascal: Lame
+education: |
+    4 GCSEs
+    3 A-Levels
+    BSc in the Internet of Things
+
+
+That’s all you really need to know about YAML to start writing Ansible playbooks.
+
+Create a file httpd.yml in /etc/ansible/playbook/
+# vi httpd.yml
+---
+- hosts: web-servers
+  remote_user: root
+  become: yes
+  become_method: su
+  tasks:
+  - name: Installing Latest version of Apache
+    yum: pkg=httpd state=latest
+  - name: Copying the demo file
+    template: src=/etc/ansible/index.html dest=/var/www/html
+              owner=apache group=apache mode=0644
+  - name: (Enable it on System Boot)
+    service: name=httpd enabled=yes
+    notify:
+    - start apache
+  handlers:
+    - name: start apache
+      service: name=httpd state=started
+
+Create demo html file (/etc/ansible/index.html), this will be placed in the default DocumentRoot of remote hosts, as part of our tutorial.
+# vi /etc/ansible/index.html
+ 
+<html>
+  <head>
+	<title>Apache is installed by Ansible</title>
+  </head>
+  <body>
+  <h1>Apache is installed by Ansible</h1>
+  <p>Now, Apache is managed through Ansible</p>
+  </body>
+</html>
+
+
+Now, we will go through each sections of playbook (httpd.yml) file to understand what these are means.
+File starts with
+---
+All YAML files should begin with (Three dashes) “—“, this indicates the start of a document. YAML is very sensitive to space, and uses that to group different pieces of information together. Spaces must be consistent across your file to be read correctly. Items at the same level of indentation are considered sibling elements.
+---
+- hosts: web-servers
+  remote_user: root
+The hosts line is a list of one or more groups or host patterns, separated by colons, along with host you can mention remote user account.
+---
+- hosts: web-servers
+  remote_user: root
+  become: yes
+  become_method: su
+You must become root user to install any packages on system, To do that, you can use privilege escalation methods, like su. Whenever you use this kind of privilege escalation methods, you have to run ansible-playbook with “–ask-become-pass” argument.
+Now, we have set of tasks.
+ tasks:
+  - name: Installing Latest version of Apache
+    yum: pkg=httpd state=latest
+  - name: Copying the demo file
+    template: src=/etc/ansible/index.html dest=/var/www/html
+              owner=apache group=apache mode=0644
+  - name: (Enable it on System Boot)
+    service: name=httpd enabled=yes
+
+Each play contains a list of tasks, those are executed in order, one at a time, against all machines matched by the host pattern, before moving on to the next task.
+When you are running the playbook, it runs top to bottom, hosts with failed tasks are taken out of the rotation for the entire playbook.
+Every task should have a name, which is included in the output from running the playbook. This is output for humans, so it is nice to have reasonably good descriptions of each task step.
+First task will install latest version of apache, second will copy the demo html (/etc/ansible/index.html) to /var/www/html directory of remote hosts, third one will enable auto-start of apache service during system boot.
+These ‘notify’ actions are triggered at the end of each block of tasks in a playbook, and will only be triggered once even if notified by multiple different tasks.
+   notify:
+    - start apache
+
+The “notify” item contains an item called “start apache”.This is a reference to a handler, which can perform certain functions when it is called from within a task. We will define the “start apache” handler below.
+ handlers:
+    - name: start apache
+      service: name=httpd state=started
+
+Handlers are lists of tasks, not really any different from regular tasks. but they only run when they have been told by a task that changes have occurred on the client system.
+In our case, we have a handler that starts apache service after the package is installed. This is because of the notifier notified handler about changes to the system, meaning that apache packages had to be installed and along with that demo file had to be copied to DocumentRoot.
+Running Playbook:
+Once you have a playbook ready, you can run it using below command.
+#ansible-playbook httpd.yml -f 1 --ask-become-pass
+#ansible-playbook -l 172.18.100.130 httpd.yml -k
+
+ansible-playbook – Command to run ansible playbooks.
+httpd.yml – YAML file (Ansible Playbook file – that we created at start of this tutorial)
+-f 1 – playbook using a parallelism level of 1
+–ask-become-pass – Since we need to become root user to install packages.
+By default, the above command will install apache webserver on all hosts. Since the playbook itself has information of remote hosts that it should run (“web-servers” – group that we created in last tutorial), so we do not have to specify a host to run playbook tasks.
+
+
+You can also run playbook on specific host by running below command, below command runs playbook only on “192.168.12.8”
+#ansible-playbook -l 192.168.12.8 httpd.yml --ask-become-pass
+
+
+Sample output of running playbook.
+Sample Running Playbook
+After running a playbook, open your browser and navigate to any one of the remote host mentioned in ansible inventory. In my case, URL will be http://192.168.12.8
+#ansible-playbook -l 172.18.100.130 httpd.yml -k
+
+URL will be http://172.18.100.130
+
+
+
+Install nginx
+
+https://www.nginx.com/blog/installing-nginx-nginx-plus-ansible/
+Creating an Ansible Playbook for Installing NGINX (CentOS)
+First we create a working directory for our NGINX deployment, along with subdirectories and deployment configuration files. I usually recommend creating the directory in your home directory and show that in all examples in this tutorial.
+$ cd $HOME
+$ mkdir -p ansible-nginx/playbook/
+$ touch /etc/ansible/deploy.yml
+$ touch /etc/ansible/playbook/install_nginx.yml
+The directory structure now looks like this. You can check by using the tree command.
+$ tree $HOME/ansible-nginx/
+/etc/ansible/
+├── deploy.yml
+└── playbook
+    └── install_nginx.yml
+
+
+
+1 directory, 2 files
+If you do not have tree installed, you can do so using the following command.
+$ sudo yum install -y tree
+Creating the Main Deployment File
+Next we open deploy.yml in a text editor. I prefer vim for editing configuration files on the command line, and will use it throughout the tutorial.
+$ vim $HOME/ansible-nginx/deploy.yml
+The deploy.yml file is our main Ansible deployment file, which we’ll reference when we run the ansible‑playbook command in Running Ansible to Deploy NGINX. Within this file we specify the inventory for Ansible to use along with any other configuration files to include at runtime.
+In my example I use the include module to specify a configuration file that has the steps for installing NGINX. While it is possible to create a playbook in one very large file, I recommend that you separate the steps into smaller included files to keep things organized. Sample use cases for an include are copying static content, copying configuration files, or assigning variables for a more advanced deployment with configuration logic.
+Type the following lines into the file. I include the filename at the top in a comment for reference.
+
+
+# ./ansible/deploy.yml
+- hosts: nginx
+  tasks:
+    - include: 'tasks/install_nginx.yml'
+The hosts statement tells Ansible to deploy to all servers in the nginx group, which is defined in /etc/ansible/hosts. We’ll edit this file in Creating the List of NGINX Servers below.
+The include statement tells Ansible to read in and execute the contents of the install_nginx.yml file from the tasks directory during deployment. The file includes the steps for downloading, installing, and starting NGINX. We’ll create this file in the next section.
+Creating the Deployment File for NGINX
+Now let’s save our work to deploy.yml and open up install_nginx.yml in the editor.
+$ vim $HOME/ansible-nginx/tasks/install_nginx.yml
+The file is going to contain the instructions – written in YAML format – for Ansible to follow when installing and configuring our NGINX deployment. Each section (step in the process) starts with a namestatement (preceded by hyphen) that describes the step. The string following name: is written to stdoutduring the Ansible deployment and can be changed as you wish. The next line of a section in the YAML file is the module that will be used during that deployment step. In the configuration below, both the yumand service modules are used. The yum module is used to install packages on CentOS. The service module is used to manage UNIX services. The final line or lines in a section specify any parameters for the module (in the example, these lines start with name and state).
+Type the following lines into the file. As with deploy.yml, the first line in our file is a comment that names the file for reference. The first section tells Ansible to install the .rpm file for CentOS 7 from the NGINX repository. This directs the package manager to install the most recent stable version of NGINX directly from NGINX. Modify the pathname as necessary for your CentOS version. A list of available packages can be found on the open source NGINX website. The next two sections tell Ansible to install the latest NGINX version using the yum module and then start NGINX using the service module.
+Note: In the first section, the pathname to the CentOS package might appear on two lines; that is only for space reasons. Type the entire path on a single line.
+# ./ansible-nginx/tasks/install_nginx.yml
+ 
+- name: NGINX | Installing NGINX repo rpm
+  yum:
+    name: http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+ 
+- name: NGINX | Installing NGINX
+  yum:
+    name: nginx
+    state: latest
+ 
+- name: NGINX | Starting NGINX
+  service:
+    name: nginx
+    state: started
+Creating the List of NGINX Servers
+Now that we have our Ansible deployment configuration files all set up, we need to tell Ansible exactly which servers to deploy to. We specify this in the Ansible hosts file I mentioned earlier. Let’s make a backup of the existing file and create a new one just for our deployment.
+$ sudo mv /etc/ansible/hosts /etc/ansible/hosts.backup
+$ sudo vim /etc/ansible/hosts
+Type (or edit) the following lines in the file to create a group called nginx and list the servers to install NGINX on. You can designate servers by hostname, IP address, or in an array such as server[1‑3].domain.com. Here I designate one server by its IP address.
+# /etc/ansible/hosts
+ 
+[nginx]
+172.18.100.149
+Running Ansible to Deploy NGINX
+If you have followed the steps in this tutorial, you can run the following command to have Ansible deploy NGINX. (Again, if you have set up RSA SSH key authentication, then the ‑‑ask‑pass flag is not needed.) Run the command on the Ansible server with the configuration files we created above.
+$ sudo ansible-playbook 172.18.100.149 --ask-pass deploy.yml
+
+#ansible-playbook -l 172.18.100.149 deploy.yml
+
+Ansible prompts for the SSH password and produces output like the following. A recap that reports failed=0 like this one indicates that deployment succeeded.
+$ sudo ansible-playbook --ask-pass deploy.yml
+SSH password:
+ 
+PLAY [all] ********************************************************************
+ 
+GATHERING FACTS ***************************************************************
+ok: [172.18.100.149]
+ 
+TASK: [NGINX | Installing NGINX repo rpm] *************************************
+changed: [172.18.100.149]
+ 
+TASK: [NGINX | Installing NGINX] **********************************************
+changed: [172.18.100.149]
+ 
+TASK: [NGINX | Starting NGINX] ************************************************
+changed: [172.18.100.149]
+ 
+PLAY RECAP ********************************************************************
+172.18.100.149             : ok=4    changed=3    unreachable=0    failed=0
+If you didn’t get a successful play recap, you can try running the ansible‑playbook command again with the -vvvv flag (verbose with connection debugging) to troubleshoot the deployment process.
+When deployment succeeds (as it did for us on the first try), you can verify that NGINX is running on the remote server by running the following basic cURL command. Here it returns 200 OK. Success! We have successfully installed NGINX using Ansible.
+$ curl -Is 172.18.100.149 | grep HTTP
+HTTP/1.1 200 OK
+
+
+
+
+
+Copy a file local ansible server to remote using playbook
+
+- hosts: 172.18.100.178
+
+ user: root
+  tasks:
+   - name: copy file from local to machine2
+     copy: src=/root/test1/test.txt dest=/tmp/test/test.txt
+
